@@ -26,7 +26,10 @@ public class Map extends Game {
 
     private SpriteBatch batch;
     private Texture imgGround;
+    private Texture imgGroundBlurred;
     private Texture imgBattle;
+    private Texture storeOverlay;
+    private Pixmap pixmap;
 
     private TiledMap map;
     private OrthogonalTiledMapRenderer renderer;
@@ -44,6 +47,7 @@ public class Map extends Game {
     @Override
     public void create() {
         batch = new SpriteBatch();
+
         width = Gdx.app.getGraphics().getWidth();
         height = Gdx.app.getGraphics().getHeight();
         ratio = width / height;
@@ -53,9 +57,9 @@ public class Map extends Game {
 
         imgGround = new Texture(convertPixmaps(new Pixmap(Gdx.files.internal("sand_tile_ground.png"))));
         imgBattle = new Texture(convertPixmaps(new Pixmap(Gdx.files.internal("sand_tile_battle.png"))));
+        imgGroundBlurred = new Texture(convertPixmaps(new Pixmap(Gdx.files.internal("sand_tile_ground_blurred.png"))));
 
         tilesPosition = new MapReader().read("levels/lvl" + level + ".txt");
-
     }
 
     @Override
@@ -65,11 +69,12 @@ public class Map extends Game {
 
     @Override
     public void render() {
-        Gdx.gl.glClearColor(1, 1, 0, 1);
+        Gdx.gl.glClearColor(0, 0, 0, 1);
         Gdx.gl.glClear(GL20.GL_COLOR_BUFFER_BIT);
         batch.begin();
         setTiles();
         batch.end();
+
     }
 
     @Override
@@ -77,9 +82,13 @@ public class Map extends Game {
         batch.dispose();
         imgGround.dispose();
         imgBattle.dispose();
+        pixmap.dispose();
     }
 
     public void setTiles (){
+
+        int extraTiles = Math.round(storeHeight / tileSize);
+
         for (int i = 0; i < 10; i++){
             for (int j = 0; j < 20; j++){
                 if (tilesPosition[0][i][j] == 0){
@@ -88,6 +97,11 @@ public class Map extends Game {
                 else{
                     batch.draw(imgBattle, (width - tileSize) - (j * tileSize),(height - tileSize) - (i * tileSize) - storeHeight);
                 }
+            }
+        }
+        for (int i = 0; i < extraTiles; i++){
+            for (int j = 0; j < 20; j++){
+                batch.draw(imgGroundBlurred, (width - tileSize) - (j * tileSize),(height - tileSize) - (i * tileSize) + (extraTiles * tileSize) - storeHeight);
             }
         }
     }

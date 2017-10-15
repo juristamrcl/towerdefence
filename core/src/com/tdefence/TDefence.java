@@ -8,7 +8,7 @@ public class TDefence extends ApplicationAdapter {
 	private Map map;
 	@Override
 	public void create () {
-		map = new Map();
+		map = new Map("1");
 		map.create();
 	}
 
