@@ -2,12 +2,16 @@ package com.tdefence;
 
 import com.badlogic.gdx.ApplicationAdapter;
 import com.badlogic.gdx.Gdx;
+import com.badlogic.gdx.graphics.Color;
 import com.badlogic.gdx.graphics.Pixmap;
 import com.badlogic.gdx.graphics.Texture;
+import com.badlogic.gdx.graphics.g2d.BitmapFont;
 import com.badlogic.gdx.graphics.g2d.Sprite;
 import com.badlogic.gdx.graphics.g2d.SpriteBatch;
+import com.badlogic.gdx.graphics.g2d.freetype.FreeTypeFontGenerator;
 import com.badlogic.gdx.math.Vector2;
 
+import java.awt.Font;
 import java.util.List;
 
 /**
@@ -26,47 +30,68 @@ public class Store extends ApplicationAdapter {
 
     private Vector2 [] turretPositions;
     private Texture [] storeItems;
+    private Texture moneyItem;
+    private Texture menuButton;
+    private Texture pauseButton;
+    private Texture playButton;
     private SpriteBatch batch;
-    private Sprite testSprite;
+    private BitmapFont cashFont;
+    private FreeTypeFontGenerator generator;
+    private FreeTypeFontGenerator.FreeTypeFontParameter parameter;
 
     private int tileSize;
     private int width;
     private int height;
-
+    private int cash;
 
     private float storeHeight;
     private float shopItemSpaceBetween;
 
-    public Store(float storeHeight, int tileSize, int width, int height){
+    private boolean isPaused = true;
+
+    public Store(float storeHeight, int tileSize, int width, int height, int cash){
         this.storeHeight = storeHeight;
         this.tileSize = tileSize;
         this.width = width;
         this.height = height;
+        this.cash = cash;
     }
 
     @Override
     public void create() {
 
-        batch = new SpriteBatch();
+        this.batch = new SpriteBatch();
 
         float offsetYStore;
-        turretPositions = new Vector2[5];
-        storeItems = new Texture[4];
-        if (storeHeight > 1.7 * tileSize){
-            offsetYStore = (storeHeight / 2) - (tileSize / 2);
+
+        this.turretPositions = new Vector2[4];
+        this.storeItems = new Texture[4];
+        if (this.storeHeight > 1.7 * this.tileSize){
+            offsetYStore = (this.storeHeight / 2) - (this.tileSize / 2);
         }
         else {
-            offsetYStore = (storeHeight - tileSize) / 2;
+            offsetYStore = (this.storeHeight - this.tileSize) / 2;
         }
 
-        shopItemSpaceBetween = (2 * tileSize) / 5;
+        this.shopItemSpaceBetween = (2 * this.tileSize) / 5;
 
         for (int i = 0; i < 4; i++){
-            storeItems[i] = new Texture(PlayScreen.convertPixmaps(new Pixmap(Gdx.files.internal("sand_tile_battle.png")), tileSize));
-            turretPositions[i] = new Vector2((7 * tileSize) + (i * tileSize) + ((i+1) * shopItemSpaceBetween), height - tileSize - offsetYStore);
+            this.storeItems[i] = new Texture(PlayScreen.convertPixmaps(new Pixmap(Gdx.files.internal("tower_medium.png")), tileSize));
+            this.turretPositions[i] = new Vector2((7 * this.tileSize) + (i * this.tileSize) + ((i+1) * this.shopItemSpaceBetween), this.height - this.tileSize - offsetYStore);
         }
-        testSprite = new Sprite(storeItems[0]);
-        testSprite.setBounds(turretPositions[0].x, turretPositions[0].y, tileSize, tileSize);
+
+        this.moneyItem = new Texture(PlayScreen.convertPixmaps(new Pixmap(Gdx.files.internal("money.png")), this.storeHeight / 3));
+        this.menuButton = new Texture(PlayScreen.convertPixmaps(new Pixmap(Gdx.files.internal("menu.png")), this.storeHeight / 3));
+        this.playButton = new Texture(PlayScreen.convertPixmaps(new Pixmap(Gdx.files.internal("play.png")), this.storeHeight / 3));
+        this.pauseButton = new Texture(PlayScreen.convertPixmaps(new Pixmap(Gdx.files.internal("pause.png")), this.storeHeight / 3));
+
+
+        this.generator = new FreeTypeFontGenerator(Gdx.files.internal("fonts/Quicksand-Bold.ttf"));
+        this.parameter = new FreeTypeFontGenerator.FreeTypeFontParameter();
+        this.parameter.size = (int)(this.storeHeight / 3);
+        this.parameter.color = Color.DARK_GRAY;
+        this.cashFont = generator.generateFont(parameter);
+
     }
 
     @Override
@@ -77,23 +102,35 @@ public class Store extends ApplicationAdapter {
     @Override
     public void render() {
 
-        batch.begin();
-        drawStoreItems();
-        batch.draw(testSprite, turretPositions[0].x, turretPositions[0].y);
-        batch.end();
+        this.batch.begin();
+        this.drawStoreItems();
+        batch.draw(this.moneyItem, 40 + (this.storeHeight / 2), this.height - (this.storeHeight) + (this.storeHeight / 3));
+        this.cashFont.draw(this.batch, this.cash + "", 100 + (int)this.storeHeight / 2, this.height - (this.storeHeight / 5 * 2));
+
+        batch.draw(this.menuButton, this.width - (40 + (this.storeHeight / 2)) - this.storeHeight / 3, this.height - (this.storeHeight) + (this.storeHeight / 3));
+        if (isPaused){
+            batch.draw(this.playButton, this.width - (140 + (this.storeHeight / 2)), this.height - (this.storeHeight) + (this.storeHeight / 3));
+        }
+        else{
+            batch.draw(this.pauseButton, this.width - (140 + (this.storeHeight / 2)), this.height - (this.storeHeight) + (this.storeHeight / 3));
+        }
+        this.batch.end();
     }
 
     @Override
     public void dispose() {
-        for (Texture text : storeItems){
-            text.dispose();
+        for (Texture texture : this.storeItems){
+            texture.dispose();
         }
-        batch.dispose();
+        this.batch.dispose();
+        this.cashFont.dispose();
+        this.generator.dispose();
+        this.menuButton.dispose();
     }
 
     public void drawStoreItems (){
-        for (int i = 1; i < 4; i++){
-            batch.draw(storeItems[i], turretPositions[i].x, turretPositions[i].y);
+        for (int i = 0; i < 4; i++){
+            this.batch.draw(this.storeItems[i], this.turretPositions[i].x, this.turretPositions[i].y);
         }
     }
 
