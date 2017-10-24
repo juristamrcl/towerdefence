@@ -9,7 +9,6 @@ import com.badlogic.gdx.graphics.g2d.Sprite;
 import com.badlogic.gdx.graphics.g2d.SpriteBatch;
 import com.badlogic.gdx.graphics.glutils.ShapeRenderer;
 import com.badlogic.gdx.math.Vector2;
-import com.badlogic.gdx.utils.Timer;
 
 /**
  * Created by Marcel Jurišta on 17.10.2017.
@@ -31,8 +30,9 @@ public class Enemy extends ApplicationAdapter {
     private int id;
     private int width;
     private int height;
-    private int step = 4;
+    private int speed = 4;
     private int rotation = 90;
+    private int price;
 
     private float damage = 1;
     private float health = 100;
@@ -41,6 +41,13 @@ public class Enemy extends ApplicationAdapter {
     private float tileSize;
 
     private boolean toDestroy = false;
+    private boolean isPassedAway = false;
+
+    public void setRunning(boolean running) {
+        isRunning = running;
+    }
+
+    private boolean isRunning = true;
 
     public void setToDestroy(boolean toDestroy) {
         this.toDestroy = toDestroy;
@@ -66,7 +73,11 @@ public class Enemy extends ApplicationAdapter {
         return health;
     }
 
-    public Enemy (int id, float tileSize, int width, int height, float damage, Vector2 [][] centeredTilesPositions, Vector2 startPosition, Vector2 endPosition, int [][] groundPositions, Vector2 actualGroundPosition){
+    public int getPrice() {
+        return price;
+    }
+
+    public Enemy (int id, float tileSize, int width, int height, float damage, int speed, int price, Vector2 [][] centeredTilesPositions, Vector2 startPosition, Vector2 endPosition, int [][] groundPositions, Vector2 actualGroundPosition){
         this.id = id;
         this.tileSize = tileSize;
         this.width = width;
@@ -77,17 +88,21 @@ public class Enemy extends ApplicationAdapter {
         this.endPosition = endPosition;
         this.groundPositions = groundPositions;
         this.actualGroundPosition = actualGroundPosition;
+        this.speed = speed;
+        this.price = price;
+    }
+    public Enemy (){
     }
 
     @Override
     public void create() {
-        this.batch = new SpriteBatch();
-        this.position = new Vector2(this.centeredTilesPositions[(int)startPosition.x][(int)endPosition.x].x - this.tileSize, this.centeredTilesPositions[(int)startPosition.y][(int)endPosition.y].y);
-        this.image = new Sprite(new Texture(PlayScreen.convertPixmaps(new Pixmap(Gdx.files.internal("enemy1.png")), tileSize)));
-        this.image.setRotation(this.rotation);
-        this.image.setPosition(this.position.x, height - this.position.y);
-        this.image.setBounds(this.position.x,height - (height - this.position.y) , this.tileSize, this.tileSize);
-        this.shapeRenderer = new ShapeRenderer();
+        batch = new SpriteBatch();
+        position = new Vector2(centeredTilesPositions[(int)startPosition.x][(int)endPosition.x].x - tileSize, centeredTilesPositions[(int)startPosition.y][(int)endPosition.y].y);
+        image = new Sprite(new Texture(PlayScreen.convertPixmaps(new Pixmap(Gdx.files.internal("enemy1.png")), tileSize)));
+        image.setRotation(rotation);
+        image.setPosition(position.x, height - position.y);
+        image.setBounds(position.x,height - (height - position.y) , tileSize, tileSize);
+        shapeRenderer = new ShapeRenderer();
     }
 
     @Override
@@ -97,17 +112,19 @@ public class Enemy extends ApplicationAdapter {
 
     @Override
     public void render() {
-        this.timeSeconds += Gdx.graphics.getRawDeltaTime();
-        if(this.timeSeconds > this.period){
-            this.timeSeconds -= this.period;
-            this.move();
+        if(isRunning){
+            timeSeconds += Gdx.graphics.getRawDeltaTime();
+            if(timeSeconds > period){
+                timeSeconds -= period;
+                move();
+            }
         }
 
-        this.batch.begin();
-        this.image.draw(this.batch);
-        this.batch.end();
+        batch.begin();
+        image.draw(batch);
+        batch.end();
 
-        this.showHealth(new Vector2(this.position.x, this.height - (this.position.y - healthOffset - this.tileSize)), new Vector2(this.position.x + (this.tileSize / 100 * this.health), this.height - (this.position.y - healthOffset - this.tileSize)), 10, Color.FOREST);
+        showHealth(new Vector2(position.x, height - (position.y - healthOffset - tileSize)), new Vector2(position.x + (tileSize / 100 * health), height - (position.y - healthOffset - tileSize)), 10, PlayScreen.healthColoring(health));
     }
 
     @Override
@@ -122,85 +139,88 @@ public class Enemy extends ApplicationAdapter {
 
     @Override
     public void dispose() {
-        this.batch.dispose();}
+        batch.dispose();}
 
     public void move (){
-        if (this.actualGroundPosition.x < PlayScreen.TILES_WIDTH_NUMBER && this.position.x >= 0){
-            if ((this.actualDirection.equals("right") || this.actualDirection.equals("left")) && this.position.x % this.tileSize == 0){
+        if (actualGroundPosition.x < PlayScreen.TILES_WIDTH_NUMBER && position.x >= 0){
+            if ((actualDirection.equals("right") || actualDirection.equals("left")) && position.x % tileSize == 0){
 
-                if (this.groundPositions[(int)this.actualGroundPosition.y + 1][(int)this.actualGroundPosition.x]  == 1){
-                    this.actualDirection = "down";
-                    this.actualGroundPosition.y++;
+                if (groundPositions[(int)actualGroundPosition.y + 1][(int)actualGroundPosition.x]  == 1){
+                    actualDirection = "down";
+                    actualGroundPosition.y++;
                 }
-                else if (this.groundPositions[(int)this.actualGroundPosition.y - 1][(int)this.actualGroundPosition.x]  == 1){
-                    this.actualDirection = "up";
-                    this.actualGroundPosition.y--;
+                else if (groundPositions[(int)actualGroundPosition.y - 1][(int)actualGroundPosition.x]  == 1){
+                    actualDirection = "up";
+                    actualGroundPosition.y--;
                 }
                 else {
-                    if(this.actualDirection.equals("right")){
-                        this.actualGroundPosition.x++;
+                    if(actualDirection.equals("right")){
+                        actualGroundPosition.x++;
                     }
                     else {
-                        this.actualGroundPosition.x--;
+                        actualGroundPosition.x--;
                     }
                 }
             }
 
-            else if ((this.actualDirection.equals("up") || this.actualDirection.equals("down")) && (height - this.position.y) % this.tileSize == 0){
+            else if ((actualDirection.equals("up") || actualDirection.equals("down")) && (height - position.y) % tileSize == 0){
 
-                if (this.groundPositions[(int)this.actualGroundPosition.y][(int)this.actualGroundPosition.x - 1]  == 1){
-                    this.actualDirection = "left";
-                    this.actualGroundPosition.x--;
+                if (groundPositions[(int)actualGroundPosition.y][(int)actualGroundPosition.x - 1]  == 1){
+                    actualDirection = "left";
+                    actualGroundPosition.x--;
                 }
-                else if (this.groundPositions[(int)this.actualGroundPosition.y][(int)this.actualGroundPosition.x + 1]  == 1){
-                    this.actualDirection = "right";
-                    this.actualGroundPosition.x++;
+                else if (groundPositions[(int)actualGroundPosition.y][(int)actualGroundPosition.x + 1]  == 1){
+                    actualDirection = "right";
+                    actualGroundPosition.x++;
                 }
                 else {
-                    if(this.actualDirection.equals("up")){
-                        this.actualGroundPosition.y--;
+                    if(actualDirection.equals("up")){
+                        actualGroundPosition.y--;
                     }
                     else {
-                        this.actualGroundPosition.y++;
+                        actualGroundPosition.y++;
                     }
                 }
             }
-            if (this.actualDirection.equals("right")){
-                this.position.x += this.step;
-                this.rotation = 90;
+            if (actualDirection.equals("right")){
+                position.x += speed;
+                rotation = 90;
             }
-            else if (this.actualDirection.equals("left")){
-                this.position.x -= this.step;
-                this.rotation = 270;
+            else if (actualDirection.equals("left")){
+                position.x -= speed;
+                rotation = 270;
             }
-            else if (this.actualDirection.equals("up")){
-                this.position.y -= this.step;
-                this.rotation = 0;
+            else if (actualDirection.equals("up")){
+                position.y -= speed;
+                rotation = 0;
             }
-            else if (this.actualDirection.equals("down")){
-                this.position.y += this.step;
-                this.rotation = 180;
+            else if (actualDirection.equals("down")){
+                position.y += speed;
+                rotation = 180;
             }
 
         }
-        else if (this.position.x < 0){
-            this.position.x += step;
+        else if (position.x < 0){
+            position.x += speed;
         }
         else{
-            if (this.position.x == this.width){
-                this.toDestroy = true;
+            if (position.x == width){
+                isPassedAway = true;
             }
             else {
-                this.position.x += this.step;
+                position.x += speed;
             }
         }
-        this.image.setPosition(this.position.x, height - this.position.y);
-        this.image.setBounds(this.position.x, height - this.position.y, this.tileSize, this.tileSize);
-        this.image.setRotation(this.rotation);
+        image.setPosition(position.x, height - position.y);
+        image.setBounds(position.x, height - position.y, tileSize, tileSize);
+        image.setRotation(rotation);
     }
 
     public boolean destroy(){
-        return this.toDestroy;
+        return toDestroy;
+    }
+    public boolean passedAway(){
+        return isPassedAway;
     }
 
     public void showHealth(Vector2 start, Vector2 end, int lineWidth, Color color)

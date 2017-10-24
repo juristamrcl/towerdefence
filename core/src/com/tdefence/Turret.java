@@ -2,11 +2,13 @@ package com.tdefence;
 
 import com.badlogic.gdx.ApplicationAdapter;
 import com.badlogic.gdx.Gdx;
+import com.badlogic.gdx.graphics.Color;
 import com.badlogic.gdx.graphics.Pixmap;
 import com.badlogic.gdx.graphics.Texture;
 import com.badlogic.gdx.graphics.g2d.Sprite;
 import com.badlogic.gdx.graphics.g2d.SpriteBatch;
 import com.badlogic.gdx.graphics.g2d.TextureRegion;
+import com.badlogic.gdx.graphics.glutils.ShapeRenderer;
 import com.badlogic.gdx.math.Rectangle;
 import com.badlogic.gdx.math.Vector2;
 
@@ -26,16 +28,38 @@ public class Turret extends ApplicationAdapter {
 
     private Sprite shootingRangeBounds;
 
+    public Enemy getShootingEnemy() {
+        return shootingEnemy;
+    }
+
+    public void setShootingEnemy(Enemy shootingEnemy) {
+        this.shootingEnemy = shootingEnemy;
+    }
+
+    private Enemy shootingEnemy;
+    private ShapeRenderer shapeRenderer;
+
     private int id;
     private int width;
     private int height;
+    private int cost;
 
     private float power;
     private float tileSize;
-    float shootingRange;
+    private float shootingRange;
+
+    public boolean isShooting() {
+        return shooting;
+    }
+
+    public void setShooting(boolean shooting) {
+        this.shooting = shooting;
+    }
+
+    private boolean shooting;
 
 
-    public Turret (Vector2 position, int id, float tileSize, int width, int height, float shootingRange){
+    public Turret (Vector2 position, int id, float tileSize, int width, int height, float shootingRange, int cost){
         this.position = position;
         this.id = id;
         this.tileSize = tileSize;
@@ -43,18 +67,25 @@ public class Turret extends ApplicationAdapter {
         this.height = height;
         this.shootingRange = shootingRange * 2;
         this.image = new Texture(PlayScreen.convertPixmaps(new Pixmap(Gdx.files.internal("tower_medium.png")), tileSize));
+        this.cost = cost;
+
+        shootingEnemy = new Enemy();
+    }
+
+    public int getCost() {
+        return cost;
     }
 
     public void setPosition(Vector2 position) {
-        this.position = position;
+        position = position;
     }
 
     @Override
     public void create() {
-        this.batch = new SpriteBatch();
-        this.shootingRangeBounds = new Sprite();
-        this.shootingRangeBounds.setBounds(this.position.x + (this.tileSize / 2) - (this.shootingRange / 2),height - (this.position.y + (- this.tileSize / 2) + (this.shootingRange / 2)), this.shootingRange, this.shootingRange);
-        Gdx.app.log("INFO", "Turret Bounds:" + (this.position.x + (this.tileSize / 2) - (this.shootingRange / 2))+ " " + (height - (this.position.y + (- this.tileSize / 2) + (this.shootingRange / 2))));
+        batch = new SpriteBatch();
+        shootingRangeBounds = new Sprite();
+        shootingRangeBounds.setBounds(position.x + (tileSize / 2) - (shootingRange / 2),height - (position.y + (- tileSize / 2) + (shootingRange / 2)), shootingRange, shootingRange);
+        shapeRenderer = new ShapeRenderer();
     }
 
     @Override
@@ -65,7 +96,7 @@ public class Turret extends ApplicationAdapter {
     @Override
     public void render() {
         batch.begin();
-        batch.draw(image, this.position.x, height - this.position.y);
+        batch.draw(image, position.x, height - position.y);
         batch.end();
     }
 
@@ -81,7 +112,22 @@ public class Turret extends ApplicationAdapter {
 
     @Override
     public void dispose() {
-        this.image.dispose();
-        this.batch.dispose();
+        image.dispose();
+        batch.dispose();
+        shapeRenderer.dispose();
+    }
+
+    public void shoot(){
+        drawDebugLine(new Vector2(width - (width - (tileSize / 2) - position.x), height + (tileSize / 2) - position.y), new Vector2(width - (width - (tileSize / 2) - shootingEnemy.getPosition().x), height + (tileSize / 2) - shootingEnemy.getPosition().y), 4, Color.RED);
+    }
+
+    public void drawDebugLine(Vector2 start, Vector2 end, int lineWidth, Color color)
+    {
+        Gdx.gl.glLineWidth(lineWidth);
+        shapeRenderer.begin(ShapeRenderer.ShapeType.Line);
+        shapeRenderer.setColor(color);
+        shapeRenderer.line(start, end);
+        shapeRenderer.end();
+        Gdx.gl.glLineWidth(1);
     }
 }
