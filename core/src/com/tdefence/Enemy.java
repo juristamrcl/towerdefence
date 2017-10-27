@@ -30,15 +30,15 @@ public class Enemy extends ApplicationAdapter {
     private int id;
     private int width;
     private int height;
-    private int speed = 4;
-    private int rotation = 90;
+    private int rotation = 270;
     private int price;
 
     private float damage = 1;
     private float health = 100;
-    private float timeSeconds = 0f;
-    private float period = 0.0004f;
     private float tileSize;
+    private float speed = 0.0004f;
+    private float timeSeconds = 0f;
+    private float originalHealth;
 
     private boolean toDestroy = false;
     private boolean isPassedAway = false;
@@ -66,7 +66,7 @@ public class Enemy extends ApplicationAdapter {
     public float getDamage() {
         return damage;
     }
-    public void setDamage(float damage) {
+    public void loseHealth(float damage) {
         this.health -= damage;
     }
     public float getHealth() {
@@ -77,12 +77,13 @@ public class Enemy extends ApplicationAdapter {
         return price;
     }
 
-    public Enemy (int id, float tileSize, int width, int height, float damage, int speed, int price, Vector2 [][] centeredTilesPositions, Vector2 startPosition, Vector2 endPosition, int [][] groundPositions, Vector2 actualGroundPosition){
+    public Enemy (int id, float tileSize, int width, int height, float damage, float health, float speed, int price, Vector2 [][] centeredTilesPositions, Vector2 startPosition, Vector2 endPosition, int [][] groundPositions, Vector2 actualGroundPosition){
         this.id = id;
         this.tileSize = tileSize;
         this.width = width;
         this.height = height;
         this.damage = damage;
+        this.originalHealth = this.health = health;
         this.centeredTilesPositions = centeredTilesPositions;
         this.startPosition = startPosition;
         this.endPosition = endPosition;
@@ -98,7 +99,7 @@ public class Enemy extends ApplicationAdapter {
     public void create() {
         batch = new SpriteBatch();
         position = new Vector2(centeredTilesPositions[(int)startPosition.x][(int)endPosition.x].x - tileSize, centeredTilesPositions[(int)startPosition.y][(int)endPosition.y].y);
-        image = new Sprite(new Texture(PlayScreen.convertPixmaps(new Pixmap(Gdx.files.internal("enemy1.png")), tileSize)));
+        image = new Sprite(new Texture(PlayScreen.convertPixmaps(new Pixmap(Gdx.files.internal("enemy" + id + ".png")), tileSize)));
         image.setRotation(rotation);
         image.setPosition(position.x, height - position.y);
         image.setBounds(position.x,height - (height - position.y) , tileSize, tileSize);
@@ -114,8 +115,8 @@ public class Enemy extends ApplicationAdapter {
     public void render() {
         if(isRunning){
             timeSeconds += Gdx.graphics.getRawDeltaTime();
-            if(timeSeconds > period){
-                timeSeconds -= period;
+            if(timeSeconds > speed){
+                timeSeconds -= speed;
                 move();
             }
         }
@@ -124,7 +125,7 @@ public class Enemy extends ApplicationAdapter {
         image.draw(batch);
         batch.end();
 
-        showHealth(new Vector2(position.x, height - (position.y - healthOffset - tileSize)), new Vector2(position.x + (tileSize / 100 * health), height - (position.y - healthOffset - tileSize)), 10, PlayScreen.healthColoring(health));
+        showHealth(new Vector2(position.x, height - (position.y - healthOffset - tileSize)), new Vector2(position.x + (tileSize / 100 * (health / originalHealth * 100)), height - (position.y - healthOffset - tileSize)), 10, PlayScreen.healthColoring(health / originalHealth * 100));
     }
 
     @Override
@@ -139,7 +140,9 @@ public class Enemy extends ApplicationAdapter {
 
     @Override
     public void dispose() {
-        batch.dispose();}
+        shapeRenderer.dispose();
+        batch.dispose();
+    }
 
     public void move (){
         if (actualGroundPosition.x < PlayScreen.TILES_WIDTH_NUMBER && position.x >= 0){
@@ -183,32 +186,32 @@ public class Enemy extends ApplicationAdapter {
                 }
             }
             if (actualDirection.equals("right")){
-                position.x += speed;
-                rotation = 90;
-            }
-            else if (actualDirection.equals("left")){
-                position.x -= speed;
+                position.x ++;
                 rotation = 270;
             }
+            else if (actualDirection.equals("left")){
+                position.x --;
+                rotation = 90;
+            }
             else if (actualDirection.equals("up")){
-                position.y -= speed;
+                position.y --;
                 rotation = 0;
             }
             else if (actualDirection.equals("down")){
-                position.y += speed;
+                position.y ++;
                 rotation = 180;
             }
 
         }
         else if (position.x < 0){
-            position.x += speed;
+            position.x ++;
         }
         else{
             if (position.x == width){
                 isPassedAway = true;
             }
             else {
-                position.x += speed;
+                position.x ++;
             }
         }
         image.setPosition(position.x, height - position.y);

@@ -3,6 +3,7 @@ package com.tdefence;
 
 import com.badlogic.gdx.ApplicationAdapter;
 import com.badlogic.gdx.Gdx;
+import com.badlogic.gdx.graphics.Color;
 import com.badlogic.gdx.graphics.Pixmap;
 import com.badlogic.gdx.graphics.Texture;
 import com.badlogic.gdx.graphics.g2d.SpriteBatch;
@@ -14,19 +15,24 @@ import com.tdefence.Logic.MapReader;
 
 public class Map extends ApplicationAdapter {
 
+    public static final int LEVELS_COUNT = 5;
+
     private int width;
     private int height;
     private int extraTiles;
     private int [][][] tilesPositions;
 
     private SpriteBatch batch;
-    private Texture imgGround;
     private Texture imgGroundBlurred;
     private Texture imgBattle;
 
     private float tileSize;
     private float storeHeight;
     private float originalStoreHeight;
+
+    public int getLevel() {
+        return Integer.parseInt(level);
+    }
 
     private String level;
 
@@ -43,9 +49,7 @@ public class Map extends ApplicationAdapter {
     public void create() {
         batch = new SpriteBatch();
 
-        imgGround = new Texture(PlayScreen.convertPixmaps(new Pixmap(Gdx.files.internal("sand_tile_ground.png")), (int)tileSize));
-        imgBattle = new Texture(PlayScreen.convertPixmaps(new Pixmap(Gdx.files.internal("sand_tile_battle.png")), (int)tileSize));
-        imgGroundBlurred = new Texture(PlayScreen.convertPixmaps(new Pixmap(Gdx.files.internal("sand_tile_ground_blurred.png")), (int)tileSize));
+        imgGroundBlurred = imgBattle = new Texture(PlayScreen.convertPixmaps(new Pixmap(Gdx.files.internal("winter_attack2.png")), (int)tileSize));
 
         tilesPositions = new MapReader().read("levels/lvl" + level + ".txt");
 
@@ -68,7 +72,7 @@ public class Map extends ApplicationAdapter {
     @Override
     public void dispose() {
         batch.dispose();
-        imgGround.dispose();
+        imgGroundBlurred.dispose();
         imgBattle.dispose();
     }
 
@@ -82,7 +86,7 @@ public class Map extends ApplicationAdapter {
         for (int i = 0; i < 10; i++){
             for (int j = 0; j < 20; j++){
                 if (tilesPositions[0][i][j] == 0){
-                    batch.draw(imgGround, width - ((width - tileSize) - (j * tileSize))- tileSize, (height - tileSize) - (i * tileSize) - originalStoreHeight);
+                    //batch.draw(imgGround, width - ((width - tileSize) - (j * tileSize))- tileSize, (height - tileSize) - (i * tileSize) - originalStoreHeight);
                 }
                 else{
                     batch.draw(imgBattle, width - ((width - tileSize) - (j * tileSize))- tileSize, (height - tileSize) - (i * tileSize) - originalStoreHeight);

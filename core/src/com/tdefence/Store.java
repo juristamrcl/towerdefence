@@ -62,7 +62,11 @@ public class Store extends ApplicationAdapter {
     private float shopItemSpaceBetween;
     private float offsetYStore;
 
-    private boolean isPaused = true;
+    public void setPaused(boolean paused) {
+        isPaused = paused;
+    }
+
+    private boolean isPaused = false;
 
     public Store(float storeHeight, int tileSize, int width, int height, int[] turretPrices, int cash){
         this.storeHeight = storeHeight;
@@ -102,8 +106,8 @@ public class Store extends ApplicationAdapter {
         shopItemSpaceBetween = (2 * tileSize) / 5;
 
         for (int i = 0; i < 4; i++){
-            storeItems[i] = new Texture(PlayScreen.convertPixmaps(new Pixmap(Gdx.files.internal("tower_medium.png")), tileSize));
-            turretPositions[i] = new Vector2((7 * tileSize) + (i * tileSize) + ((i+1) * shopItemSpaceBetween), height - tileSize - offsetYStore);
+            storeItems[i] = new Texture(PlayScreen.convertPixmaps(new Pixmap(Gdx.files.internal("tower" + i + ".png")), tileSize));
+            turretPositions[i] = new Vector2((7 * tileSize) + (i * tileSize) + ((i+1) * shopItemSpaceBetween), height - tileSize - offsetYStore + 5);
         }
 
         moneyItem = new Texture(PlayScreen.convertPixmaps(new Pixmap(Gdx.files.internal("money.png")), storeHeight / 3));
@@ -136,13 +140,13 @@ public class Store extends ApplicationAdapter {
         batch.begin();
         drawStoreItems();
         batch.draw(moneyItem, 40 + (storeHeight / 2), height - (storeHeight) + (storeHeight / 3));
-        cashFont.draw(batch, cash + "", 100 + (int)storeHeight / 2, height - (storeHeight / 5 * 2));
+        cashFont.draw(batch, cash + "", 90 + (int)storeHeight / 2, height - (storeHeight / 5 * 2));
         for (int i = 0; i < storeItems.length; i++){
             if (this.cash >= turretPrices[i]){
-                turretPriceFontGreen.draw(batch, turretPrices[i] + "",(tileSize / 5 * 4) + (7 * tileSize) + (i * tileSize) + ((i+1) * shopItemSpaceBetween), height - tileSize - offsetYStore / 5 * 4);
+                turretPriceFontGreen.draw(batch, "$" + turretPrices[i],(tileSize / 2) + (7 * tileSize) + (i * tileSize) + ((i+1) * shopItemSpaceBetween), height - tileSize - offsetYStore / 5 * 4);
             }
             else{
-                turretPriceFontRed.draw(batch, turretPrices[i] + "",(tileSize / 5 * 4) + (7 * tileSize) + (i * tileSize) + ((i+1) * shopItemSpaceBetween), height - tileSize - offsetYStore / 5 * 4);
+                turretPriceFontRed.draw(batch, "$" + turretPrices[i],(tileSize / 2) + (7 * tileSize) + (i * tileSize) + ((i+1) * shopItemSpaceBetween), height - tileSize - offsetYStore / 5 * 4);
             }
 
         }

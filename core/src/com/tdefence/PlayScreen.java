@@ -1,19 +1,23 @@
 package com.tdefence;
 
 import com.badlogic.gdx.ApplicationAdapter;
-import com.badlogic.gdx.ApplicationListener;
 import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.InputProcessor;
+import com.badlogic.gdx.Preferences;
+import com.badlogic.gdx.audio.Sound;
 import com.badlogic.gdx.graphics.Color;
-import com.badlogic.gdx.graphics.GL20;
 import com.badlogic.gdx.graphics.Pixmap;
 import com.badlogic.gdx.graphics.Texture;
 import com.badlogic.gdx.graphics.g2d.Animation;
 import com.badlogic.gdx.graphics.g2d.SpriteBatch;
 import com.badlogic.gdx.graphics.g2d.TextureAtlas;
 import com.badlogic.gdx.graphics.g2d.TextureRegion;
-import com.badlogic.gdx.graphics.glutils.ShapeRenderer;
+import com.badlogic.gdx.math.MathUtils;
 import com.badlogic.gdx.math.Vector2;
+import com.tdefence.Logic.ShapeBuilder;
+import com.tdefence.Logic.Spread;
+
+import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.ListIterator;
@@ -23,85 +27,101 @@ import java.util.Random;
  * Created by Marcel Jurišta on 14.10.2017.
  */
 
-public class PlayScreen extends ApplicationAdapter implements ApplicationListener, InputProcessor {
+public class PlayScreen extends ApplicationAdapter implements InputProcessor, Serializable {
 
     public final static int TILES_WIDTH_NUMBER = 20;
     public final static int TILES_HEIGHT_NUMBER = 10;
     public final static int MAXIMUM_DAMAGE = 100;
+    public static GameState gameState;
+
+    public enum GameState {
+        SHOW_MENU,
+        SHOW_WIN_FAIL,
+        SHOW_GAME,
+        PLAY_NEW_LEVEL
+    };
 
     private Map map;
     private Store store;
-    private ShapeRenderer shapeRenderer;
     private SpriteBatch batch;
     private Vector2 tapPosition;
     private Random rand;
 
     private Vector2 [][] centeredPositions;
-    private Texture[] storeItems;
+    private Texture [] storeItems;
     private Vector2 positionToDestroy;
-    private Vector2 positions[];
+    private Vector2 [] positions;
+    private Color[] turretShootingLineColors;
+    private TextureAtlas textureAtlas;
+    private Animation<TextureRegion> animation;
+    private Sound sound;
+    private Spread[] spreads;
+    private Preferences prefs;
+
+    public WinFailScreen getWinFail() {
+        return winFail;
+    }
+
+    private WinFailScreen winFail;
 
     private int width;
     private int height;
     private int onePercentWidth;
     private int grabbedItemId = -1;
-    private int turretCosts[];
-    private int enemyPrices[];
+    private int spawnedEnemies = 0;
+    private int enemiesEscaped = 0;
+    private int [] turretCosts;
+    private int [] enemyPrices;
+    private int [] turretShootingLineHeights;
+    private int [] enemyHealths;
+    private int [] enemiesForLevel;
+    private int [] cashForLevel;
 
     private float tileSize;
     private float storeHeight;
     private float originalStoreHeight;
     private float draggableHeight;
     private float damage = 0;
-    private float turretRadius[];
+    private float elapsedTime = 0;
+    private float totalTime = 0.0004f;
+    private float timeSeconds = 0f;
+    private float winFailSeconds = 0f;
+    private float winFailTotalTime = 1f;
+    private float [] turretRadius;
+    private float [] turretPowers;
+    private float [] enemyDamages;
+    private float [] enemySpeeds;
+    private float [] spawnTime;
 
     private boolean itemIsGrabbed = false;
-    private boolean isDropped = false;
+    private boolean itemIsDropped = false;
     private boolean isRunning = true;
     private boolean startAnimation = false;
+    private boolean playSound = true;
 
     private List<Turret> turrets;
     private List<Enemy> enemies;
 
-    // animation
-
-    private TextureAtlas textureAtlas;
-    private Animation<TextureRegion> animation;
-    private float elapsedTime = 0;
-
+    public PlayScreen(float tileSize, int width, int height, float storeHeight, float originalStoreHeight, Map map, boolean playSound){
+        this.tileSize = tileSize;
+        this.width = width;
+        this.height = height;
+        this.storeHeight = storeHeight;
+        this.originalStoreHeight = originalStoreHeight;
+        this.playSound = playSound;
+        this.map = map;
+    }
 
     @Override
     public void create () {
-        width = Gdx.app.getGraphics().getWidth();
-        height = Gdx.app.getGraphics().getHeight();
-
-        positionToDestroy = new Vector2(0,0);
-        rand = new Random();
-        turrets = new ArrayList<Turret>();
-        enemies = new ArrayList<Enemy>();
-        shapeRenderer = new ShapeRenderer();
-        batch = new SpriteBatch();
-        textureAtlas = new TextureAtlas(Gdx.files.internal("charset.atlas"));
-        animation = new Animation(1/50f, textureAtlas.getRegions(), Animation.PlayMode.NORMAL);
-        centeredPositions = new Vector2[10][20];
-
         onePercentWidth = width / 100;
-        tileSize = width / TILES_WIDTH_NUMBER;
         draggableHeight = height - ((TILES_HEIGHT_NUMBER - 1) * tileSize);
 
-        originalStoreHeight = storeHeight = height - (TILES_HEIGHT_NUMBER * tileSize);
-        if (storeHeight < 1.5 * tileSize){
-            storeHeight += (tileSize / 2);
-        }
-
-        turretRadius = new float[] {tileSize * 1.5f, tileSize * 2f, tileSize * 2f, tileSize * 2.5f};
-        turretCosts = new int[] {5, 20, 35, 60};
-        enemyPrices = new int[]{4, 7, 9, 15};
-
-        map = new Map("1", width, height, tileSize, storeHeight, originalStoreHeight);
-        store = new Store((int)storeHeight, (int)tileSize, width, height, turretCosts, 190);
-
         map.create();
+
+        initialize();
+        store = new Store((int)storeHeight, (int)tileSize, width, height, turretCosts, cashForLevel[map.getLevel()]);
+
         store.create();
 
         Gdx.input.setInputProcessor(this);
@@ -111,21 +131,11 @@ public class PlayScreen extends ApplicationAdapter implements ApplicationListene
 
         tapPosition = new Vector2(0,0);
         setCenteredPositions();
-
-        //to remove
-        for (int j = 0; j < 4; j++){
-            for (int i = 1; i < 3; i++){
-                Enemy enemy = new Enemy(1, tileSize, width, height, 5f, i, enemyPrices[0], centeredPositions, getStartEndPosition(true), getStartEndPosition(false), map.getTilesPositions(0), getStartGroundPosition());
-                enemy.create();
-                enemies.add(enemy);
-            }
-        }
+        prefs = Gdx.app.getPreferences("tDefence");
     }
 
     @Override
     public void render () {
-        Gdx.gl.glClearColor(0, 0, 0, 1);
-        Gdx.gl.glClear(GL20.GL_COLOR_BUFFER_BIT);
 
         map.render();
         store.render();
@@ -139,10 +149,43 @@ public class PlayScreen extends ApplicationAdapter implements ApplicationListene
             for (Enemy e: enemies){
                 e.setRunning(true);
             }
+            timeSeconds += Gdx.graphics.getRawDeltaTime();
+            if(timeSeconds > totalTime){
+                if (spawnedEnemies < enemiesForLevel[map.getLevel()]) {
+                    int enemyID = randomizeEnemyId();
+                    Enemy enemy = new Enemy(enemyID, tileSize, width, height, enemyDamages[enemyID], enemyHealths[enemyID], enemySpeeds[enemyID], enemyPrices[enemyID], centeredPositions, getStartEndPosition(true), getStartEndPosition(false), map.getTilesPositions(0), getStartGroundPosition());
+                    enemy.create();
+                    enemies.add(enemy);
+                    totalTime = MathUtils.random(spawnTime[map.getLevel()] - 0.6f, spawnTime[map.getLevel()] + 0.6f);
+                    timeSeconds -= totalTime;
+                    spawnedEnemies++;
+                }
+            }
+            if(damage >= MAXIMUM_DAMAGE){
+                if (winFailSeconds > winFailTotalTime){
+                    winFail = new WinFailScreen(width, height, false, enemiesForLevel[map.getLevel()] - enemiesEscaped, enemiesForLevel[map.getLevel()], map.getLevel());
+                    winFail.create();
+                    gameState = GameState.SHOW_WIN_FAIL;
+                    winFailSeconds = 0;
+                }
+                else {
+                    winFailSeconds += Gdx.graphics.getRawDeltaTime();
+                }
+            }
+            if(enemiesForLevel[map.getLevel()] <= spawnedEnemies && enemies.size() == 0 && MAXIMUM_DAMAGE > damage){
+                if (winFailSeconds > winFailTotalTime){
+                    winFail = new WinFailScreen(width, height, true, enemiesForLevel[map.getLevel()] - enemiesEscaped, enemiesForLevel[map.getLevel()], map.getLevel());
+                    winFail.create();
+                    gameState = GameState.SHOW_WIN_FAIL;
+                    winFailSeconds = 0;
+                }
+                else {
+                    winFailSeconds += Gdx.graphics.getRawDeltaTime();
+                }
+            }
         }
 
-        drawDebugLine(new Vector2(width - ((damage * onePercentWidth) / 2), height - storeHeight + 1), new Vector2(width - (width - ((damage * onePercentWidth) / 2)), height - storeHeight + 1), 10, PlayScreen.healthColoring(100 - damage));
-
+        ShapeBuilder.drawLine(new Vector2(width - ((damage * onePercentWidth) / 2), height - storeHeight + 1), new Vector2(width - (width - ((damage * onePercentWidth) / 2)), height - storeHeight + 1), 10, PlayScreen.healthColoring(PlayScreen.MAXIMUM_DAMAGE - damage));
 
         ListIterator<Enemy> itr = enemies.listIterator();
         while(itr.hasNext()){
@@ -156,11 +199,11 @@ public class PlayScreen extends ApplicationAdapter implements ApplicationListene
                         turret.setShootingEnemy(enemy);
                         turret.shoot();
 
-                        checkEnemyShoot(enemy);
+                        shootEnemy(enemy, turret);
                     }
                     else if (turret.isShooting() && turret.getShootingEnemy().equals(enemy)){
                         turret.shoot();
-                        checkEnemyShoot(enemy);
+                        shootEnemy(enemy, turret);
                     }
                 }
                 else {
@@ -169,7 +212,6 @@ public class PlayScreen extends ApplicationAdapter implements ApplicationListene
                     }
                 }
             }
-
             enemy.render();
         }
 
@@ -187,6 +229,7 @@ public class PlayScreen extends ApplicationAdapter implements ApplicationListene
                         }
                     }
                     damage += enemy.getDamage();
+                    enemiesEscaped++;
                     enIter.remove();
                 }
                 else if (enemy.destroy()){
@@ -199,6 +242,9 @@ public class PlayScreen extends ApplicationAdapter implements ApplicationListene
                     startAnimation = true;
                     store.addCash(enemy.getPrice());
                     enIter.remove();
+                    if (playSound){
+                        sound.play(1f);
+                    }
                 }
             }
         }
@@ -216,14 +262,12 @@ public class PlayScreen extends ApplicationAdapter implements ApplicationListene
             batch.begin();
             batch.draw(storeItems[grabbedItemId], tapPosition.x - (tileSize / 2), height - tapPosition.y - (tileSize / 2));
             batch.end();
-            drawCircle(tapPosition, turretRadius[grabbedItemId], 2, Color.FOREST);
+            ShapeBuilder.drawCircle(tapPosition, turretRadius[grabbedItemId], 2, height, turretShootingLineColors[grabbedItemId]);
         }
-
     }
 
     @Override
     public void dispose () {
-        map.dispose();
 
         for (Turret turret: turrets){
             turret.dispose();
@@ -234,7 +278,7 @@ public class PlayScreen extends ApplicationAdapter implements ApplicationListene
 
         store.dispose();
         batch.dispose();
-        textureAtlas.dispose();
+        sound.dispose();
     }
 
     @Override
@@ -254,17 +298,26 @@ public class PlayScreen extends ApplicationAdapter implements ApplicationListene
 
     @Override
     public boolean touchDown(int screenX, int screenY, int pointer, int button) {
-        isDropped = false;
+        itemIsDropped = false;
         tapPosition.set(screenX, screenY);
         if (screenX > width - (140 + (storeHeight / 2)) && screenX  <= width - (140 + (storeHeight / 2)) + (storeHeight / 3) && screenY > 0
                 && screenY <= storeHeight){
 
             if (isRunning){
                 isRunning = false;
+                store.setPaused(true);
             }
             else{
                 isRunning = true;
+                store.setPaused(false);
             }
+        }
+
+        if (screenX > width - (40 + (storeHeight / 2)) - storeHeight / 3 && screenX  <= width - (40 + (storeHeight / 2)) - storeHeight / 3  + (storeHeight / 3) && screenY > 0
+                && screenY <= storeHeight){
+
+            gameState = GameState.SHOW_MENU;
+            this.dispose();
         }
         for (int i = 0; i < 4; i++){
             if ((screenX > positions[i].x && screenX < positions[i].x + tileSize) && (screenY < height - positions[i].y && screenY < height - positions[i].y + tileSize) && store.getCash() >= turretCosts[i] && isRunning){
@@ -277,10 +330,10 @@ public class PlayScreen extends ApplicationAdapter implements ApplicationListene
 
     @Override
     public boolean touchUp(int screenX, int screenY, int pointer, int button) {
-        isDropped = true;
-        if (itemIsGrabbed && screenY > draggableHeight && store.getCash() - turretCosts[grabbedItemId] >= 0 && checkForGroundPosition(new Vector2 (screenX, screenY))){
+        itemIsDropped = true;
+        if (itemIsGrabbed && screenY > draggableHeight && store.getCash() - grabbedItemId != -1 && checkForGroundPosition(new Vector2 (screenX, screenY))){
             Vector2 vector = new Vector2(screenX, screenY);
-            Turret turret = new Turret(PlayScreen.setTurretPosition(vector, tileSize, width, height, storeHeight, originalStoreHeight), grabbedItemId, tileSize, width, height, turretRadius[grabbedItemId], turretCosts[grabbedItemId]);
+            Turret turret = new Turret(PlayScreen.setTurretPosition(vector, tileSize, width, height, storeHeight, originalStoreHeight), grabbedItemId, tileSize, width, height, turretRadius[grabbedItemId], turretPowers[grabbedItemId], turretCosts[grabbedItemId], turretShootingLineColors[grabbedItemId], turretShootingLineHeights[grabbedItemId]);
             turret.create();
             turrets.add(turret);
 
@@ -295,7 +348,7 @@ public class PlayScreen extends ApplicationAdapter implements ApplicationListene
 
     @Override
     public boolean touchDragged(int screenX, int screenY, int pointer) {
-        if(!isDropped){
+        if(!itemIsDropped){
             tapPosition.set(screenX, screenY);
         }
         return false;
@@ -311,24 +364,30 @@ public class PlayScreen extends ApplicationAdapter implements ApplicationListene
         return false;
     }
 
-    public void drawDebugLine(Vector2 start, Vector2 end, int lineWidth, Color color)
-    {
-        Gdx.gl.glLineWidth(lineWidth);
-        shapeRenderer.begin(ShapeRenderer.ShapeType.Line);
-        shapeRenderer.setColor(color);
-        shapeRenderer.line(start, end);
-        shapeRenderer.end();
-        Gdx.gl.glLineWidth(1);
-    }
+    public void initialize(){
+        positionToDestroy = new Vector2(0,0);
+        rand = new Random();
+        turrets = new ArrayList<Turret>();
+        enemies = new ArrayList<Enemy>();
+        batch = new SpriteBatch();
+        textureAtlas = new TextureAtlas(Gdx.files.internal("charset.atlas"));
+        animation = new Animation(1/50f, textureAtlas.getRegions(), Animation.PlayMode.NORMAL);
+        centeredPositions = new Vector2[10][20];
+        sound = Gdx.audio.newSound(Gdx.files.internal("data/explosion.mp3"));
 
-    public void drawCircle(Vector2 position, float radius, int lineWidth, Color color)
-    {
-        Gdx.gl.glLineWidth(lineWidth);
-        shapeRenderer.begin(ShapeRenderer.ShapeType.Line);
-        shapeRenderer.setColor(color);
-        shapeRenderer.circle(position.x, height - position.y, radius);
-        shapeRenderer.end();
-        Gdx.gl.glLineWidth(1);
+        turretRadius = new float[] {tileSize * 1.5f, tileSize * 2f, tileSize * 2f, tileSize * 2.5f};
+        turretCosts = new int[] {5, 20, 35, 60};
+        enemyPrices = new int[]{1, 2, 3, 5};
+        cashForLevel = new int[]{19, 25, 30, 70, 100};
+        turretShootingLineColors = new Color[]{Color.ORANGE, Color.TEAL, Color.RED, Color.PURPLE};
+        turretShootingLineHeights = new int[]{2, 2, 2, 2};
+        turretPowers = new float[]{0.7f, 0.8f, 0.9f, 1f};
+        enemyHealths = new int[]{100, 300, 700, 4000};
+        enemyDamages = new float[]{5f, 7f, 9f, 15f};
+        enemySpeeds = new float[]{0.000000001f, 0.003f, 0.004f, 0.01f};
+        enemiesForLevel = new int[]{40, 50, 55, 70, 100};
+        spawnTime = new float[]{3f, 1.7f, 1.65f, 1.6f, 1.6f};
+        spreads = new Spread[]{new Spread(0,1), new Spread(0,2), new Spread(1,2), new Spread(1,3), new Spread(2,3)};
     }
 
     public static Pixmap convertPixmaps(Pixmap pixmapOld, float fTileSize){
@@ -401,9 +460,9 @@ public class PlayScreen extends ApplicationAdapter implements ApplicationListene
         return new Vector2(0,0);
     }
 
-    public void checkEnemyShoot(Enemy enemy){
+    public void shootEnemy(Enemy enemy, Turret turret){
         if (this.isRunning){
-            enemy.setDamage(0.3f);
+            enemy.loseHealth(turret.getPower());
             if (enemy.getHealth() <= 0){
                 enemy.setToDestroy(true);
             }
@@ -433,5 +492,14 @@ public class PlayScreen extends ApplicationAdapter implements ApplicationListene
         batch.draw(animation.getKeyFrame(elapsedTime, true), enemy.x - (50 - (tileSize / 2)), height - enemy.y - (50 - (tileSize / 2)));
         elapsedTime += Gdx.graphics.getDeltaTime();
         batch.end();
+    }
+
+    public int randomizeEnemyId(){
+        if (map.getLevel() < 4){
+            return MathUtils.random(spreads[map.getLevel()].getMinimum(), spreads[map.getLevel()].getMaximum());
+        }
+        else {
+            return MathUtils.random(1, 3);
+        }
     }
 }

@@ -38,11 +38,17 @@ public class Turret extends ApplicationAdapter {
 
     private Enemy shootingEnemy;
     private ShapeRenderer shapeRenderer;
+    private Color shootingColor;
 
     private int id;
     private int width;
     private int height;
     private int cost;
+    private int shootingLineHeight;
+
+    public float getPower() {
+        return power;
+    }
 
     private float power;
     private float tileSize;
@@ -59,15 +65,18 @@ public class Turret extends ApplicationAdapter {
     private boolean shooting;
 
 
-    public Turret (Vector2 position, int id, float tileSize, int width, int height, float shootingRange, int cost){
+    public Turret (Vector2 position, int id, float tileSize, int width, int height, float shootingRange, float power, int cost, Color shootingColor, int shootingLineHeight){
         this.position = position;
         this.id = id;
         this.tileSize = tileSize;
         this.width = width;
         this.height = height;
         this.shootingRange = shootingRange * 2;
-        this.image = new Texture(PlayScreen.convertPixmaps(new Pixmap(Gdx.files.internal("tower_medium.png")), tileSize));
+        this.image = new Texture(PlayScreen.convertPixmaps(new Pixmap(Gdx.files.internal("tower" + id + ".png")), tileSize));
         this.cost = cost;
+        this.power = power;
+        this.shootingColor = shootingColor;
+        this.shootingLineHeight = shootingLineHeight;
 
         shootingEnemy = new Enemy();
     }
@@ -118,7 +127,7 @@ public class Turret extends ApplicationAdapter {
     }
 
     public void shoot(){
-        drawDebugLine(new Vector2(width - (width - (tileSize / 2) - position.x), height + (tileSize / 2) - position.y), new Vector2(width - (width - (tileSize / 2) - shootingEnemy.getPosition().x), height + (tileSize / 2) - shootingEnemy.getPosition().y), 4, Color.RED);
+        drawDebugLine(new Vector2(width - (width - (tileSize / 2) - position.x), height + (tileSize / 2) - position.y), new Vector2(width - (width - (tileSize / 2) - shootingEnemy.getPosition().x), height + (tileSize / 2) - shootingEnemy.getPosition().y), shootingLineHeight, shootingColor);
     }
 
     public void drawDebugLine(Vector2 start, Vector2 end, int lineWidth, Color color)
